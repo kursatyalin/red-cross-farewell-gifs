@@ -60,65 +60,47 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
         workerScript: '/gif.worker.js'
       });
 
-      // Frame 1: Original image (1 second)
+      // Frame 1: Original image (2 seconds)
       ctx.drawImage(img, 0, 0, width, height);
-      gif.addFrame(canvas, { delay: 1000 });
-      setProgress(20);
+      gif.addFrame(canvas, { delay: 2000 });
+      setProgress(25);
 
-      // Frames 2-4: Cross animation (0.3 seconds each)
+      // Frames 2-4: Cross fade-in animation (0.4 seconds each)
       for (let i = 0; i < 3; i++) {
         ctx.clearRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
         
-        // Draw red cross
-        ctx.strokeStyle = '#ff0000';
+        // Draw red cross with fade-in opacity
+        const opacity = (i + 1) / 3;
+        ctx.strokeStyle = `rgba(255, 0, 0, ${opacity})`;
         ctx.lineWidth = Math.max(8, width / 100);
         ctx.lineCap = 'round';
         
-        // Animate cross drawing
-        const progress = (i + 1) / 3;
         const crossSize = Math.min(width, height) * 0.8;
         const centerX = width / 2;
         const centerY = height / 2;
         
         ctx.beginPath();
-        // First line (top-left to bottom-right)
-        if (progress >= 0.5) {
-          ctx.moveTo(centerX - crossSize / 2, centerY - crossSize / 2);
-          ctx.lineTo(centerX + crossSize / 2, centerY + crossSize / 2);
-        } else {
-          const lineProgress = progress * 2;
-          ctx.moveTo(centerX - crossSize / 2, centerY - crossSize / 2);
-          ctx.lineTo(
-            centerX - crossSize / 2 + (crossSize * lineProgress),
-            centerY - crossSize / 2 + (crossSize * lineProgress)
-          );
-        }
-        
-        // Second line (top-right to bottom-left)
-        if (progress === 1) {
-          ctx.moveTo(centerX + crossSize / 2, centerY - crossSize / 2);
-          ctx.lineTo(centerX - crossSize / 2, centerY + crossSize / 2);
-        } else if (progress > 0.5) {
-          const lineProgress = (progress - 0.5) * 2;
-          ctx.moveTo(centerX + crossSize / 2, centerY - crossSize / 2);
-          ctx.lineTo(
-            centerX + crossSize / 2 - (crossSize * lineProgress),
-            centerY - crossSize / 2 + (crossSize * lineProgress)
-          );
-        }
-        
+        // Draw complete cross with varying opacity
+        ctx.moveTo(centerX - crossSize / 2, centerY - crossSize / 2);
+        ctx.lineTo(centerX + crossSize / 2, centerY + crossSize / 2);
+        ctx.moveTo(centerX + crossSize / 2, centerY - crossSize / 2);
+        ctx.lineTo(centerX - crossSize / 2, centerY + crossSize / 2);
         ctx.stroke();
         
-        gif.addFrame(canvas, { delay: 300 });
-        setProgress(20 + (i + 1) * 20);
+        gif.addFrame(canvas, { delay: 400 });
+        setProgress(25 + (i + 1) * 15);
       }
 
-      // Final frame: Complete cross (2 seconds)
+      // Final frame: Black and white image with red cross (2 seconds)
       ctx.clearRect(0, 0, width, height);
-      ctx.drawImage(img, 0, 0, width, height);
       
-      // Draw complete red cross
+      // Convert image to black and white
+      ctx.filter = 'grayscale(100%)';
+      ctx.drawImage(img, 0, 0, width, height);
+      ctx.filter = 'none';
+      
+      // Draw complete red cross on black and white image
       ctx.strokeStyle = '#ff0000';
       ctx.lineWidth = Math.max(8, width / 100);
       ctx.lineCap = 'round';
