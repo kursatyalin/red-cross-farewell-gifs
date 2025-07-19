@@ -65,13 +65,13 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
       gif.addFrame(canvas, { delay: 2000 });
       setProgress(25);
 
-      // Frames 2-4: Cross fade-in animation (0.4 seconds each)
-      for (let i = 0; i < 3; i++) {
+      // Frames 2-7: Cross fade-in animation (0.2 seconds each)
+      for (let i = 0; i < 6; i++) {
         ctx.clearRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
         
-        // Draw red cross with fade-in opacity
-        const opacity = (i + 1) / 3;
+        // Draw red cross with smooth fade-in opacity
+        const opacity = (i + 1) / 6;
         ctx.strokeStyle = `rgba(255, 0, 0, ${opacity})`;
         ctx.lineWidth = Math.max(8, width / 100);
         ctx.lineCap = 'round';
@@ -88,8 +88,8 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
         ctx.lineTo(centerX - crossSize / 2, centerY + crossSize / 2);
         ctx.stroke();
         
-        gif.addFrame(canvas, { delay: 400 });
-        setProgress(25 + (i + 1) * 15);
+        gif.addFrame(canvas, { delay: 200 });
+        setProgress(25 + (i + 1) * 10);
       }
 
       // Final frame: Black and white image with red cross (2 seconds)
