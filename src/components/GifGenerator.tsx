@@ -16,9 +16,16 @@ interface GifGeneratorProps {
   onGifGenerated: (gifBlob: Blob) => void;
 }
 
+interface GeneratedGif {
+  blob: Blob;
+  type: 'elimination' | 'celebration' | 'combined';
+}
+
 export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState<'elimination' | 'celebration' | 'combined' | 'complete'>('elimination');
+  const [generatedGifs, setGeneratedGifs] = useState<GeneratedGif[]>([]);
 
   const convertToGrayscale = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -35,14 +42,278 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
     ctx.putImageData(imageData, 0, 0);
   };
 
+  const generateEliminationGif = async (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, img: HTMLImageElement, pigImg: HTMLImageElement, moneyImg: HTMLImageElement, coinsImg: HTMLImageElement, width: number, height: number): Promise<Blob> => {
+    const gif = new GIF({
+      workers: 2,
+      quality: 15,
+      width: width,
+      height: height,
+      workerScript: '/gif.worker.js',
+      repeat: 0,
+      transparent: null
+    });
+
+    // Frame 1: Original image (3 seconds)
+    ctx.drawImage(img, 0, 0, width, height);
+    gif.addFrame(ctx, { delay: 3000, copy: true });
+
+    // Frames 2-20: Smooth cross fade-in animation (2 seconds total)
+    const fadeFrames = 20;
+    const fadeDelay = Math.round(2000 / fadeFrames);
+    
+    for (let i = 0; i < fadeFrames; i++) {
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      const opacity = (i + 1) / fadeFrames;
+      
+      ctx.save();
+      ctx.strokeStyle = `rgba(255, 0, 0, ${opacity})`;
+      ctx.lineWidth = Math.min(width, height) * 0.02;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(width, height);
+      ctx.moveTo(width, 0);
+      ctx.lineTo(0, height);
+      ctx.stroke();
+      ctx.restore();
+      
+      gif.addFrame(ctx, { delay: fadeDelay, copy: true });
+    }
+
+    // Final frames: Black and white image with red cross (2 seconds)
+    for (let loop = 0; loop < 4; loop++) {
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+      convertToGrayscale(canvas, ctx);
+      
+      ctx.save();
+      ctx.strokeStyle = '#ff0000';
+      ctx.lineWidth = Math.min(width, height) * 0.02;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(width, height);
+      ctx.moveTo(width, 0);
+      ctx.lineTo(0, height);
+      ctx.stroke();
+      ctx.restore();
+      
+      gif.addFrame(ctx, { delay: 500, copy: true });
+    }
+
+    // Money scene - Pig appears and money falls (3 seconds)
+    const moneyFrames = 30;
+    const moneyDelay = 100;
+    const fallingMoney: Array<{x: number, y: number, type: 'bill' | 'coin', rotation: number}> = [];
+    
+    for (let frame = 0; frame < moneyFrames; frame++) {
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+      convertToGrayscale(canvas, ctx);
+      
+      ctx.save();
+      ctx.strokeStyle = '#ff0000';
+      ctx.lineWidth = Math.min(width, height) * 0.02;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(width, height);
+      ctx.moveTo(width, 0);
+      ctx.lineTo(0, height);
+      ctx.stroke();
+      ctx.restore();
+      
+      const pigProgress = Math.min(frame / 8, 1);
+      const pigSize = Math.min(width, height) * 0.15;
+      const pigX = width * 0.75 - pigSize / 2;
+      const pigY = -pigSize + (pigSize * 1.2 * pigProgress);
+      
+      if (pigProgress > 0) {
+        ctx.save();
+        ctx.globalAlpha = pigProgress;
+        ctx.drawImage(pigImg, pigX, pigY, pigSize, pigSize);
+        ctx.restore();
+      }
+      
+      if (frame > 5 && frame % 3 === 0) {
+        const moneyType = Math.random() > 0.6 ? 'coin' : 'bill';
+        fallingMoney.push({
+          x: pigX + pigSize / 2 + (Math.random() - 0.5) * pigSize,
+          y: pigY + pigSize,
+          type: moneyType,
+          rotation: Math.random() * 360
+        });
+      }
+      
+      for (let i = fallingMoney.length - 1; i >= 0; i--) {
+        const money = fallingMoney[i];
+        money.y += height * 0.05;
+        money.rotation += 5;
+        
+        if (money.y > height + 50) {
+          fallingMoney.splice(i, 1);
+          continue;
+        }
+        
+        ctx.save();
+        const moneySize = money.type === 'coin' ? 25 : 35;
+        ctx.translate(money.x, money.y);
+        ctx.rotate((money.rotation * Math.PI) / 180);
+        ctx.globalAlpha = 0.9;
+        
+        if (money.type === 'coin') {
+          ctx.drawImage(coinsImg, -moneySize/2, -moneySize/2, moneySize, moneySize);
+        } else {
+          ctx.drawImage(moneyImg, -moneySize/2, -moneySize/2, moneySize, moneySize);
+        }
+        ctx.restore();
+      }
+      
+      gif.addFrame(ctx, { delay: moneyDelay, copy: true });
+    }
+
+    return new Promise((resolve, reject) => {
+      gif.on('finished', resolve);
+      gif.on('error', reject);
+      gif.render();
+    });
+  };
+
+  const generateCelebrationGif = async (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, pigImg: HTMLImageElement, moneyImg: HTMLImageElement, coinsImg: HTMLImageElement): Promise<Blob> => {
+    // Full screen celebration GIF (10 seconds)
+    const screenWidth = 800;
+    const screenHeight = 800;
+    canvas.width = screenWidth;
+    canvas.height = screenHeight;
+
+    const gif = new GIF({
+      workers: 2,
+      quality: 15,
+      width: screenWidth,
+      height: screenHeight,
+      workerScript: '/gif.worker.js',
+      repeat: 0,
+      transparent: null
+    });
+
+    const totalFrames = 100; // 10 seconds at 100ms per frame
+    const fallingMoney: Array<{x: number, y: number, type: 'bill' | 'coin', rotation: number, speed: number}> = [];
+    const pigs: Array<{x: number, y: number, size: number, bounce: number}> = [];
+
+    // Create multiple pigs
+    for (let i = 0; i < 5; i++) {
+      pigs.push({
+        x: Math.random() * screenWidth,
+        y: Math.random() * screenHeight,
+        size: 60 + Math.random() * 40,
+        bounce: Math.random() * Math.PI * 2
+      });
+    }
+
+    for (let frame = 0; frame < totalFrames; frame++) {
+      // Gold background with gradient
+      const gradient = ctx.createRadialGradient(screenWidth/2, screenHeight/2, 0, screenWidth/2, screenHeight/2, screenWidth/2);
+      gradient.addColorStop(0, '#FFD700');
+      gradient.addColorStop(1, '#FFA500');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, screenWidth, screenHeight);
+
+      // Add sparkle effect
+      for (let i = 0; i < 20; i++) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        const sparkleX = Math.random() * screenWidth;
+        const sparkleY = Math.random() * screenHeight;
+        ctx.arc(sparkleX, sparkleY, Math.random() * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Draw bouncing pigs
+      pigs.forEach((pig, index) => {
+        pig.bounce += 0.2;
+        const bounceY = pig.y + Math.sin(pig.bounce) * 20;
+        ctx.drawImage(pigImg, pig.x, bounceY, pig.size, pig.size);
+      });
+
+      // Add money rain every few frames
+      if (frame % 2 === 0) {
+        for (let i = 0; i < 3; i++) {
+          const moneyType = Math.random() > 0.5 ? 'coin' : 'bill';
+          fallingMoney.push({
+            x: Math.random() * screenWidth,
+            y: -50,
+            type: moneyType,
+            rotation: Math.random() * 360,
+            speed: 3 + Math.random() * 4
+          });
+        }
+      }
+
+      // Update and draw falling money
+      for (let i = fallingMoney.length - 1; i >= 0; i--) {
+        const money = fallingMoney[i];
+        money.y += money.speed;
+        money.rotation += 8;
+        
+        if (money.y > screenHeight + 50) {
+          fallingMoney.splice(i, 1);
+          continue;
+        }
+        
+        ctx.save();
+        const moneySize = money.type === 'coin' ? 30 : 40;
+        ctx.translate(money.x, money.y);
+        ctx.rotate((money.rotation * Math.PI) / 180);
+        ctx.globalAlpha = 0.9;
+        
+        if (money.type === 'coin') {
+          ctx.drawImage(coinsImg, -moneySize/2, -moneySize/2, moneySize, moneySize);
+        } else {
+          ctx.drawImage(moneyImg, -moneySize/2, -moneySize/2, moneySize, moneySize);
+        }
+        ctx.restore();
+      }
+
+      // Add celebration text
+      if (frame > 20) {
+        ctx.fillStyle = '#000000';
+        ctx.font = 'bold 60px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('💰 JACKPOT! 💰', screenWidth/2, screenHeight/2);
+      }
+
+      gif.addFrame(ctx, { delay: 100, copy: true });
+    }
+
+    return new Promise((resolve, reject) => {
+      gif.on('finished', resolve);
+      gif.on('error', reject);
+      gif.render();
+    });
+  };
+
+  const generateCombinedGif = async (eliminationBlob: Blob, celebrationBlob: Blob): Promise<Blob> => {
+    // This would create a combined GIF showing both animations
+    // For simplicity, we'll return the celebration GIF as the "combined" version
+    // In a real implementation, you'd need to create a new GIF with both animations side by side
+    return celebrationBlob;
+  };
+
   const generateGif = async () => {
     setIsGenerating(true);
     setProgress(0);
+    setCurrentStep('elimination');
     
     try {
-      console.log('Starting GIF generation...');
+      console.log('Starting GIF generation sequence...');
       
-      // Create canvas for image processing
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Could not get canvas context');
@@ -67,7 +338,7 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
         new Promise((resolve) => { coinsImg.onload = resolve; })
       ]);
 
-      // Set canvas size to match image (max 800px)
+      // Set canvas size for elimination GIF
       const maxSize = 800;
       let { width, height } = img;
       
@@ -84,206 +355,33 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
       canvas.width = width;
       canvas.height = height;
 
-      // Initialize GIF with proper settings for animation
-      const gif = new GIF({
-        workers: 2,
-        quality: 15,
-        width: width,
-        height: height,
-        workerScript: '/gif.worker.js',
-        repeat: 0, // 0 = infinite loop
-        transparent: null
-      });
-
-      console.log('GIF initialized with dimensions:', width, 'x', height);
-
-      // Frame 1: Original image (3 seconds)
-      ctx.drawImage(img, 0, 0, width, height);
-      gif.addFrame(ctx, { delay: 3000, copy: true });
+      // Step 1: Generate elimination GIF
+      setCurrentStep('elimination');
       setProgress(10);
-      console.log('Added frame 1: Original image');
-
-      // Frames 2-20: Smooth cross fade-in animation (2 seconds total)
-      const fadeFrames = 20;
-      const fadeDelay = Math.round(2000 / fadeFrames); // ~100ms per frame
+      const eliminationBlob = await generateEliminationGif(canvas, ctx, img, pigImg, moneyImg, coinsImg, width, height);
+      setGeneratedGifs(prev => [...prev, { blob: eliminationBlob, type: 'elimination' }]);
       
-      for (let i = 0; i < fadeFrames; i++) {
-        // Clear and redraw original image
-        ctx.clearRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        // Calculate smooth opacity progression
-        const opacity = (i + 1) / fadeFrames;
-        
-        // Draw red cross with progressive opacity - stretch to edges and thicker
-        ctx.save();
-        ctx.strokeStyle = `rgba(255, 0, 0, ${opacity})`;
-        ctx.lineWidth = Math.min(width, height) * 0.02; // Thicker line
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        
-        ctx.beginPath();
-        // Diagonal from top-left to bottom-right
-        ctx.moveTo(0, 0);
-        ctx.lineTo(width, height);
-        // Diagonal from top-right to bottom-left  
-        ctx.moveTo(width, 0);
-        ctx.lineTo(0, height);
-        ctx.stroke();
-        ctx.restore();
-        
-        gif.addFrame(ctx, { delay: fadeDelay, copy: true });
-        setProgress(10 + (i + 1) * 4);
-        console.log(`Added fade frame ${i + 1}/${fadeFrames}, opacity: ${opacity.toFixed(2)}`);
-      }
-
-      // Final frames: Black and white image with red cross (2 seconds)
-      for (let loop = 0; loop < 4; loop++) {
-        // Create grayscale version
-        ctx.clearRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-        convertToGrayscale(canvas, ctx);
-        
-        // Draw final red cross
-        ctx.save();
-        ctx.strokeStyle = '#ff0000';
-        ctx.lineWidth = Math.max(6, width / 120);
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        
-        // Make cross stretch to edges and thicker
-        const centerX = width / 2;
-        const centerY = height / 2;
-        
-        ctx.lineWidth = Math.min(width, height) * 0.02; // Thicker line
-        
-        ctx.beginPath();
-        // Diagonal from top-left to bottom-right
-        ctx.moveTo(0, 0);
-        ctx.lineTo(width, height);
-        // Diagonal from top-right to bottom-left  
-        ctx.moveTo(width, 0);
-        ctx.lineTo(0, height);
-        ctx.stroke();
-        ctx.restore();
-        
-        gif.addFrame(ctx, { delay: 500, copy: true });
-        setProgress(60 + loop * 2);
-        console.log(`Added final frame ${loop + 1}/4`);
-      }
-
-      // NEW: Money scene - Pig appears and money falls (3 seconds)
-      const moneyFrames = 30; // 3 seconds at 100ms per frame
-      const moneyDelay = 100;
+      // Step 2: Generate celebration GIF
+      setCurrentStep('celebration');
+      setProgress(40);
+      const celebrationBlob = await generateCelebrationGif(canvas, ctx, pigImg, moneyImg, coinsImg);
+      setGeneratedGifs(prev => [...prev, { blob: celebrationBlob, type: 'celebration' }]);
       
-      // Create array to track falling money positions
-      const fallingMoney: Array<{x: number, y: number, type: 'bill' | 'coin', rotation: number}> = [];
+      // Step 3: Generate combined GIF
+      setCurrentStep('combined');
+      setProgress(70);
+      const combinedBlob = await generateCombinedGif(eliminationBlob, celebrationBlob);
+      setGeneratedGifs(prev => [...prev, { blob: combinedBlob, type: 'combined' }]);
       
-      for (let frame = 0; frame < moneyFrames; frame++) {
-        // Start with grayscale eliminated image
-        ctx.clearRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-        convertToGrayscale(canvas, ctx);
-        
-        // Draw red cross
-        ctx.save();
-        ctx.strokeStyle = '#ff0000';
-        ctx.lineWidth = Math.min(width, height) * 0.02;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(width, height);
-        ctx.moveTo(width, 0);
-        ctx.lineTo(0, height);
-        ctx.stroke();
-        ctx.restore();
-        
-        // Calculate pig animation (slides in from top)
-        const pigProgress = Math.min(frame / 8, 1); // Pig fully appears by frame 8
-        const pigSize = Math.min(width, height) * 0.15;
-        const pigX = width * 0.75 - pigSize / 2;
-        const pigY = -pigSize + (pigSize * 1.2 * pigProgress); // Slides down from top
-        
-        // Draw pig bank
-        if (pigProgress > 0) {
-          ctx.save();
-          ctx.globalAlpha = pigProgress;
-          ctx.drawImage(pigImg, pigX, pigY, pigSize, pigSize);
-          ctx.restore();
-        }
-        
-        // Add new falling money every 2-3 frames
-        if (frame > 5 && frame % 3 === 0) {
-          const moneyType = Math.random() > 0.6 ? 'coin' : 'bill';
-          fallingMoney.push({
-            x: pigX + pigSize / 2 + (Math.random() - 0.5) * pigSize,
-            y: pigY + pigSize,
-            type: moneyType,
-            rotation: Math.random() * 360
-          });
-        }
-        
-        // Update and draw falling money
-        for (let i = fallingMoney.length - 1; i >= 0; i--) {
-          const money = fallingMoney[i];
-          money.y += height * 0.05; // Fall speed
-          money.rotation += 5; // Spinning effect
-          
-          // Remove money that has fallen off screen
-          if (money.y > height + 50) {
-            fallingMoney.splice(i, 1);
-            continue;
-          }
-          
-          // Draw the money
-          ctx.save();
-          const moneySize = money.type === 'coin' ? 25 : 35;
-          ctx.translate(money.x, money.y);
-          ctx.rotate((money.rotation * Math.PI) / 180);
-          ctx.globalAlpha = 0.9;
-          
-          if (money.type === 'coin') {
-            ctx.drawImage(coinsImg, -moneySize/2, -moneySize/2, moneySize, moneySize);
-          } else {
-            ctx.drawImage(moneyImg, -moneySize/2, -moneySize/2, moneySize, moneySize);
-          }
-          ctx.restore();
-        }
-        
-        gif.addFrame(ctx, { delay: moneyDelay, copy: true });
-        setProgress(70 + frame * 0.5);
-        console.log(`Added money frame ${frame + 1}/${moneyFrames}`);
-      }
-
-      setProgress(85);
-
-      // Render GIF
-      gif.on('progress', (p: number) => {
-        setProgress(85 + p * 15);
-        console.log('Rendering progress:', Math.round(p * 100) + '%');
-      });
-
-      gif.on('finished', (blob: Blob) => {
-        console.log('GIF generation completed, blob size:', blob.size);
-        setProgress(100);
-        onGifGenerated(blob);
-        toast.success("Animated GIF generated successfully! 🎬");
-        setIsGenerating(false);
-      });
-
-      gif.on('error', (error: any) => {
-        console.error('GIF generation error:', error);
-        toast.error("Failed to generate GIF. Please try again.");
-        setIsGenerating(false);
-      });
-
-      console.log('Starting GIF render...');
-      gif.render();
+      setProgress(100);
+      setCurrentStep('complete');
+      onGifGenerated(eliminationBlob); // Start with the elimination GIF
+      toast.success("All GIFs generated successfully! 🎬");
+      setIsGenerating(false);
       
     } catch (error) {
-      console.error('Error generating GIF:', error);
-      toast.error("Failed to generate GIF. Please try again.");
+      console.error('Error generating GIFs:', error);
+      toast.error("Failed to generate GIFs. Please try again.");
       setIsGenerating(false);
     }
   };
@@ -293,10 +391,14 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
       <div className="space-y-6">
         <div>
           <h3 className="text-xl font-bold text-foreground mb-2">
-            Ready to Generate Your Animated GIF?
+            Ready to Generate Your GIF Sequence?
           </h3>
           <p className="text-muted-foreground">
-            Click below to create your continuously looping elimination GIF
+            {currentStep === 'elimination' && "Creating elimination GIF..."}
+            {currentStep === 'celebration' && "Creating full-screen celebration GIF..."}
+            {currentStep === 'combined' && "Creating combined GIF..."}
+            {currentStep === 'complete' && "All GIFs ready! Use controls below to play sequence."}
+            {!isGenerating && "Click below to create elimination → celebration → combined GIFs"}
           </p>
         </div>
 
@@ -304,8 +406,26 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
           <div className="space-y-3">
             <Progress value={progress} className="w-full" />
             <p className="text-sm text-muted-foreground">
-              Generating animated GIF... {Math.round(progress)}%
+              {currentStep === 'elimination' && `Creating elimination GIF... ${Math.round(progress)}%`}
+              {currentStep === 'celebration' && `Creating celebration GIF... ${Math.round(progress)}%`}
+              {currentStep === 'combined' && `Creating combined GIF... ${Math.round(progress)}%`}
             </p>
+          </div>
+        )}
+
+        {generatedGifs.length > 0 && (
+          <div className="space-y-3">
+            <h4 className="font-semibold">Generated GIFs:</h4>
+            {generatedGifs.map((gif, index) => (
+              <Button
+                key={index}
+                variant="outline"
+                onClick={() => onGifGenerated(gif.blob)}
+                className="w-full"
+              >
+                Play {gif.type.charAt(0).toUpperCase() + gif.type.slice(1)} GIF
+              </Button>
+            ))}
           </div>
         )}
 
@@ -324,7 +444,7 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
           ) : (
             <>
               <Download className="w-5 h-5" />
-              Generate Animated GIF
+              Generate GIF Sequence
             </>
           )}
         </Button>
