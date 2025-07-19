@@ -57,7 +57,8 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
         quality: 10,
         width: width,
         height: height,
-        workerScript: '/gif.worker.js'
+        workerScript: '/gif.worker.js',
+        repeat: 0 // 0 = infinite loop
       });
 
       // Frame 1: Original image (2 seconds)
