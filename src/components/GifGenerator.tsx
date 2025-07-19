@@ -100,23 +100,20 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
         // Calculate smooth opacity progression
         const opacity = (i + 1) / fadeFrames;
         
-        // Draw red cross with progressive opacity
+        // Draw red cross with progressive opacity - stretch to edges and thicker
         ctx.save();
         ctx.strokeStyle = `rgba(255, 0, 0, ${opacity})`;
-        ctx.lineWidth = Math.max(6, width / 120);
+        ctx.lineWidth = Math.min(width, height) * 0.02; // Thicker line
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         
-        const crossSize = Math.min(width, height) * 0.7;
-        const centerX = width / 2;
-        const centerY = height / 2;
-        
-        // Draw cross lines
         ctx.beginPath();
-        ctx.moveTo(centerX - crossSize / 2, centerY - crossSize / 2);
-        ctx.lineTo(centerX + crossSize / 2, centerY + crossSize / 2);
-        ctx.moveTo(centerX + crossSize / 2, centerY - crossSize / 2);
-        ctx.lineTo(centerX - crossSize / 2, centerY + crossSize / 2);
+        // Diagonal from top-left to bottom-right
+        ctx.moveTo(0, 0);
+        ctx.lineTo(width, height);
+        // Diagonal from top-right to bottom-left  
+        ctx.moveTo(width, 0);
+        ctx.lineTo(0, height);
         ctx.stroke();
         ctx.restore();
         
@@ -139,15 +136,19 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         
-        const crossSize = Math.min(width, height) * 0.7;
+        // Make cross stretch to edges and thicker
         const centerX = width / 2;
         const centerY = height / 2;
         
+        ctx.lineWidth = Math.min(width, height) * 0.02; // Thicker line
+        
         ctx.beginPath();
-        ctx.moveTo(centerX - crossSize / 2, centerY - crossSize / 2);
-        ctx.lineTo(centerX + crossSize / 2, centerY + crossSize / 2);
-        ctx.moveTo(centerX + crossSize / 2, centerY - crossSize / 2);
-        ctx.lineTo(centerX - crossSize / 2, centerY + crossSize / 2);
+        // Diagonal from top-left to bottom-right
+        ctx.moveTo(0, 0);
+        ctx.lineTo(width, height);
+        // Diagonal from top-right to bottom-left  
+        ctx.moveTo(width, 0);
+        ctx.lineTo(0, height);
         ctx.stroke();
         ctx.restore();
         
