@@ -97,15 +97,15 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
 
       console.log('GIF initialized with dimensions:', width, 'x', height);
 
-      // Frame 1: Original image (2 seconds)
+      // Frame 1: Original image (3 seconds)
       ctx.drawImage(img, 0, 0, width, height);
-      gif.addFrame(ctx, { delay: 2000, copy: true });
+      gif.addFrame(ctx, { delay: 3000, copy: true });
       setProgress(10);
       console.log('Added frame 1: Original image');
 
-      // Frames 2-16: Smooth cross fade-in animation (2 seconds total)
-      const fadeFrames = 15;
-      const fadeDelay = Math.round(2000 / fadeFrames); // ~133ms per frame
+      // Frames 2-20: Smooth cross fade-in animation (2 seconds total)
+      const fadeFrames = 20;
+      const fadeDelay = Math.round(2000 / fadeFrames); // ~100ms per frame
       
       for (let i = 0; i < fadeFrames; i++) {
         // Clear and redraw original image
@@ -137,8 +137,8 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
         console.log(`Added fade frame ${i + 1}/${fadeFrames}, opacity: ${opacity.toFixed(2)}`);
       }
 
-      // Final frames: Black and white image with red cross (loop back)
-      for (let loop = 0; loop < 3; loop++) {
+      // Final frames: Black and white image with red cross (2 seconds)
+      for (let loop = 0; loop < 4; loop++) {
         // Create grayscale version
         ctx.clearRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
@@ -167,14 +167,14 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
         ctx.stroke();
         ctx.restore();
         
-        gif.addFrame(ctx, { delay: 1000, copy: true });
-        setProgress(70 + loop * 5);
-        console.log(`Added final frame ${loop + 1}/3`);
+        gif.addFrame(ctx, { delay: 500, copy: true });
+        setProgress(60 + loop * 2);
+        console.log(`Added final frame ${loop + 1}/4`);
       }
 
-      // NEW: Money scene - Pig appears and money falls (3-4 seconds)
-      const moneyFrames = 20; // ~3-4 seconds at 150ms per frame
-      const moneyDelay = 150;
+      // NEW: Money scene - Pig appears and money falls (3 seconds)
+      const moneyFrames = 30; // 3 seconds at 100ms per frame
+      const moneyDelay = 100;
       
       // Create array to track falling money positions
       const fallingMoney: Array<{x: number, y: number, type: 'bill' | 'coin', rotation: number}> = [];
@@ -252,7 +252,7 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
         }
         
         gif.addFrame(ctx, { delay: moneyDelay, copy: true });
-        setProgress(75 + frame * 0.5);
+        setProgress(70 + frame * 0.5);
         console.log(`Added money frame ${frame + 1}/${moneyFrames}`);
       }
 
