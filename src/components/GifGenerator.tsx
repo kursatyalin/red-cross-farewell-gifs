@@ -65,7 +65,7 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
       gif.addFrame(canvas, { delay: 2000 });
       setProgress(25);
 
-      // Frames 2-7: Cross fade-in animation (0.2 seconds each)
+      // Frames 2-7: Cross fade-in animation (2 seconds total)
       for (let i = 0; i < 6; i++) {
         ctx.clearRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
@@ -88,7 +88,7 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
         ctx.lineTo(centerX - crossSize / 2, centerY + crossSize / 2);
         ctx.stroke();
         
-        gif.addFrame(canvas, { delay: 200 });
+        gif.addFrame(canvas, { delay: 333 });
         setProgress(25 + (i + 1) * 10);
       }
 
