@@ -7,6 +7,9 @@ import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 // @ts-ignore
 import GIF from "gif.js";
+import pigBankImg from "@/assets/pig-bank.png";
+import moneyBillsImg from "@/assets/money-bills.png";
+import goldCoinsImg from "@/assets/gold-coins.png";
 
 interface GifGeneratorProps {
   photo: File;
@@ -44,13 +47,25 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Could not get canvas context');
 
-      // Load the image
+      // Load all images
       const img = new Image();
       img.src = URL.createObjectURL(photo);
       
-      await new Promise((resolve) => {
-        img.onload = resolve;
-      });
+      const pigImg = new Image();
+      pigImg.src = pigBankImg;
+      
+      const moneyImg = new Image();
+      moneyImg.src = moneyBillsImg;
+      
+      const coinsImg = new Image();
+      coinsImg.src = goldCoinsImg;
+      
+      await Promise.all([
+        new Promise((resolve) => { img.onload = resolve; }),
+        new Promise((resolve) => { pigImg.onload = resolve; }),
+        new Promise((resolve) => { moneyImg.onload = resolve; }),
+        new Promise((resolve) => { coinsImg.onload = resolve; })
+      ]);
 
       // Set canvas size to match image (max 800px)
       const maxSize = 800;
@@ -155,6 +170,90 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
         gif.addFrame(ctx, { delay: 1000, copy: true });
         setProgress(70 + loop * 5);
         console.log(`Added final frame ${loop + 1}/3`);
+      }
+
+      // NEW: Money scene - Pig appears and money falls (3-4 seconds)
+      const moneyFrames = 20; // ~3-4 seconds at 150ms per frame
+      const moneyDelay = 150;
+      
+      // Create array to track falling money positions
+      const fallingMoney: Array<{x: number, y: number, type: 'bill' | 'coin', rotation: number}> = [];
+      
+      for (let frame = 0; frame < moneyFrames; frame++) {
+        // Start with grayscale eliminated image
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        convertToGrayscale(canvas, ctx);
+        
+        // Draw red cross
+        ctx.save();
+        ctx.strokeStyle = '#ff0000';
+        ctx.lineWidth = Math.min(width, height) * 0.02;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(width, height);
+        ctx.moveTo(width, 0);
+        ctx.lineTo(0, height);
+        ctx.stroke();
+        ctx.restore();
+        
+        // Calculate pig animation (slides in from top)
+        const pigProgress = Math.min(frame / 8, 1); // Pig fully appears by frame 8
+        const pigSize = Math.min(width, height) * 0.15;
+        const pigX = width * 0.75 - pigSize / 2;
+        const pigY = -pigSize + (pigSize * 1.2 * pigProgress); // Slides down from top
+        
+        // Draw pig bank
+        if (pigProgress > 0) {
+          ctx.save();
+          ctx.globalAlpha = pigProgress;
+          ctx.drawImage(pigImg, pigX, pigY, pigSize, pigSize);
+          ctx.restore();
+        }
+        
+        // Add new falling money every 2-3 frames
+        if (frame > 5 && frame % 3 === 0) {
+          const moneyType = Math.random() > 0.6 ? 'coin' : 'bill';
+          fallingMoney.push({
+            x: pigX + pigSize / 2 + (Math.random() - 0.5) * pigSize,
+            y: pigY + pigSize,
+            type: moneyType,
+            rotation: Math.random() * 360
+          });
+        }
+        
+        // Update and draw falling money
+        for (let i = fallingMoney.length - 1; i >= 0; i--) {
+          const money = fallingMoney[i];
+          money.y += height * 0.05; // Fall speed
+          money.rotation += 5; // Spinning effect
+          
+          // Remove money that has fallen off screen
+          if (money.y > height + 50) {
+            fallingMoney.splice(i, 1);
+            continue;
+          }
+          
+          // Draw the money
+          ctx.save();
+          const moneySize = money.type === 'coin' ? 25 : 35;
+          ctx.translate(money.x, money.y);
+          ctx.rotate((money.rotation * Math.PI) / 180);
+          ctx.globalAlpha = 0.9;
+          
+          if (money.type === 'coin') {
+            ctx.drawImage(coinsImg, -moneySize/2, -moneySize/2, moneySize, moneySize);
+          } else {
+            ctx.drawImage(moneyImg, -moneySize/2, -moneySize/2, moneySize, moneySize);
+          }
+          ctx.restore();
+        }
+        
+        gif.addFrame(ctx, { delay: moneyDelay, copy: true });
+        setProgress(75 + frame * 0.5);
+        console.log(`Added money frame ${frame + 1}/${moneyFrames}`);
       }
 
       setProgress(85);
