@@ -7,7 +7,6 @@ import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 // @ts-ignore
 import GIF from "gif.js";
-import pigBankImg from "@/assets/pig-bank.png";
 import moneyBillsImg from "@/assets/money-bills.png";
 import goldCoinsImg from "@/assets/gold-coins.png";
 
@@ -42,7 +41,7 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
     ctx.putImageData(imageData, 0, 0);
   };
 
-  const generateEliminationGif = async (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, img: HTMLImageElement, pigImg: HTMLImageElement, moneyImg: HTMLImageElement, coinsImg: HTMLImageElement, width: number, height: number): Promise<Blob> => {
+  const generateEliminationGif = async (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, img: HTMLImageElement, moneyImg: HTMLImageElement, coinsImg: HTMLImageElement, width: number, height: number): Promise<Blob> => {
     const gif = new GIF({
       workers: 2,
       quality: 15,
@@ -130,23 +129,12 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
       ctx.stroke();
       ctx.restore();
       
-      const pigProgress = Math.min(frame / 8, 1);
-      const pigSize = Math.min(width, height) * 0.15;
-      const pigX = width * 0.75 - pigSize / 2;
-      const pigY = -pigSize + (pigSize * 1.2 * pigProgress);
-      
-      if (pigProgress > 0) {
-        ctx.save();
-        ctx.globalAlpha = pigProgress;
-        ctx.drawImage(pigImg, pigX, pigY, pigSize, pigSize);
-        ctx.restore();
-      }
-      
-      if (frame > 5 && frame % 3 === 0) {
+      // Add new falling money from top center
+      if (frame % 3 === 0) {
         const moneyType = Math.random() > 0.6 ? 'coin' : 'bill';
         fallingMoney.push({
-          x: pigX + pigSize / 2 + (Math.random() - 0.5) * pigSize,
-          y: pigY + pigSize,
+          x: width * 0.3 + Math.random() * width * 0.4, // Spread across center area
+          y: -50,
           type: moneyType,
           rotation: Math.random() * 360
         });
@@ -186,7 +174,7 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
     });
   };
 
-  const generateCelebrationGif = async (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, pigImg: HTMLImageElement, moneyImg: HTMLImageElement, coinsImg: HTMLImageElement): Promise<Blob> => {
+  const generateCelebrationGif = async (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, moneyImg: HTMLImageElement, coinsImg: HTMLImageElement): Promise<Blob> => {
     // Full screen celebration GIF (10 seconds)
     const screenWidth = 800;
     const screenHeight = 800;
@@ -205,17 +193,6 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
 
     const totalFrames = 100; // 10 seconds at 100ms per frame
     const fallingMoney: Array<{x: number, y: number, type: 'bill' | 'coin', rotation: number, speed: number}> = [];
-    const pigs: Array<{x: number, y: number, size: number, bounce: number}> = [];
-
-    // Create multiple pigs
-    for (let i = 0; i < 5; i++) {
-      pigs.push({
-        x: Math.random() * screenWidth,
-        y: Math.random() * screenHeight,
-        size: 60 + Math.random() * 40,
-        bounce: Math.random() * Math.PI * 2
-      });
-    }
 
     for (let frame = 0; frame < totalFrames; frame++) {
       // Gold background with gradient
@@ -235,12 +212,15 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
         ctx.fill();
       }
 
-      // Draw bouncing pigs
-      pigs.forEach((pig, index) => {
-        pig.bounce += 0.2;
-        const bounceY = pig.y + Math.sin(pig.bounce) * 20;
-        ctx.drawImage(pigImg, pig.x, bounceY, pig.size, pig.size);
-      });
+      // Add floating dollar symbols
+      for (let i = 0; i < 10; i++) {
+        ctx.fillStyle = '#00FF00';
+        ctx.font = 'bold 40px Arial';
+        ctx.textAlign = 'center';
+        const symbolX = Math.random() * screenWidth;
+        const symbolY = Math.random() * screenHeight;
+        ctx.fillText('$', symbolX, symbolY);
+      }
 
       // Add money rain every few frames
       if (frame % 2 === 0) {
@@ -318,12 +298,9 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Could not get canvas context');
 
-      // Load all images
+      // Load required images
       const img = new Image();
       img.src = URL.createObjectURL(photo);
-      
-      const pigImg = new Image();
-      pigImg.src = pigBankImg;
       
       const moneyImg = new Image();
       moneyImg.src = moneyBillsImg;
@@ -333,7 +310,6 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
       
       await Promise.all([
         new Promise((resolve) => { img.onload = resolve; }),
-        new Promise((resolve) => { pigImg.onload = resolve; }),
         new Promise((resolve) => { moneyImg.onload = resolve; }),
         new Promise((resolve) => { coinsImg.onload = resolve; })
       ]);
@@ -358,13 +334,13 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
       // Step 1: Generate elimination GIF
       setCurrentStep('elimination');
       setProgress(10);
-      const eliminationBlob = await generateEliminationGif(canvas, ctx, img, pigImg, moneyImg, coinsImg, width, height);
+      const eliminationBlob = await generateEliminationGif(canvas, ctx, img, moneyImg, coinsImg, width, height);
       setGeneratedGifs(prev => [...prev, { blob: eliminationBlob, type: 'elimination' }]);
       
       // Step 2: Generate celebration GIF
       setCurrentStep('celebration');
       setProgress(40);
-      const celebrationBlob = await generateCelebrationGif(canvas, ctx, pigImg, moneyImg, coinsImg);
+      const celebrationBlob = await generateCelebrationGif(canvas, ctx, moneyImg, coinsImg);
       setGeneratedGifs(prev => [...prev, { blob: celebrationBlob, type: 'celebration' }]);
       
       // Step 3: Generate combined GIF
