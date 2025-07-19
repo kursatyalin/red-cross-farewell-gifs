@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Download, RotateCcw, Share2 } from "lucide-react";
@@ -13,24 +14,24 @@ export const GifPreview = ({ gifBlob, onReset }: GifPreviewProps) => {
     const url = URL.createObjectURL(gifBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'squid-game-elimination.gif';
+    a.download = 'elimination-animated.gif';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success("GIF downloaded! 📥");
+    toast.success("Animated GIF downloaded! 📥");
   };
 
   const shareGif = async () => {
     try {
       if (navigator.share) {
-        const file = new File([gifBlob], 'squid-game-elimination.gif', {
+        const file = new File([gifBlob], 'elimination-animated.gif', {
           type: 'image/gif'
         });
         
         await navigator.share({
-          title: 'My Squid Game Elimination GIF',
-          text: 'Check out my Squid Game elimination GIF!',
+          title: 'My Elimination GIF',
+          text: 'Check out my animated elimination GIF!',
           files: [file]
         });
       } else {
@@ -53,21 +54,28 @@ export const GifPreview = ({ gifBlob, onReset }: GifPreviewProps) => {
       <div className="space-y-6">
         <div>
           <h3 className="text-xl font-bold text-foreground mb-2">
-            Your GIF is Ready! 🎬
+            Your Animated GIF is Ready! 🎬
           </h3>
           <p className="text-muted-foreground">
-            Congratulations! Your elimination GIF has been generated.
+            Your continuously looping elimination GIF has been generated successfully!
           </p>
         </div>
 
         <div className="relative group">
           <img
             src={URL.createObjectURL(gifBlob)}
-            alt="Generated GIF"
+            alt="Generated Animated GIF"
             className="w-full max-w-md mx-auto rounded-lg shadow-red border border-primary/20"
+            style={{ 
+              imageRendering: 'auto',
+              maxWidth: '100%',
+              height: 'auto'
+            }}
+            autoPlay
+            loop
           />
           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg flex items-center justify-center">
-            <p className="text-white font-semibold">Your Elimination GIF</p>
+            <p className="text-white font-semibold">Animated Elimination GIF</p>
           </div>
         </div>
 
@@ -78,7 +86,7 @@ export const GifPreview = ({ gifBlob, onReset }: GifPreviewProps) => {
             className="flex-1 sm:flex-none"
           >
             <Download className="w-4 h-4" />
-            Download GIF
+            Download Animated GIF
           </Button>
           
           <Button
@@ -87,7 +95,7 @@ export const GifPreview = ({ gifBlob, onReset }: GifPreviewProps) => {
             className="flex-1 sm:flex-none"
           >
             <Share2 className="w-4 h-4" />
-            Share
+            Share Animation
           </Button>
           
           <Button
@@ -101,7 +109,7 @@ export const GifPreview = ({ gifBlob, onReset }: GifPreviewProps) => {
         </div>
 
         <div className="text-xs text-muted-foreground">
-          <p>💡 Tip: Share this with your former colleagues for some therapeutic humor!</p>
+          <p>🎬 Your GIF loops continuously - perfect for sharing that dramatic elimination moment!</p>
         </div>
       </div>
     </Card>
