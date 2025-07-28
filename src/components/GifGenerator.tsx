@@ -145,68 +145,6 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
         setProgress(70 + loop * 2);
       }
 
-      // Money scene (3 seconds)
-      const moneyFrames = 30;
-      const moneyDelay = 100;
-      const fallingMoney: Array<{x: number, y: number, type: 'bill' | 'coin', rotation: number}> = [];
-      
-      for (let frame = 0; frame < moneyFrames; frame++) {
-        ctx.clearRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-        convertToGrayscale(canvas, ctx);
-        
-        ctx.save();
-        ctx.strokeStyle = '#ff0000';
-        ctx.lineWidth = Math.min(width, height) * 0.02;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(width, height);
-        ctx.moveTo(width, 0);
-        ctx.lineTo(0, height);
-        ctx.stroke();
-        ctx.restore();
-        
-        // Add new falling money from top center
-        if (frame % 3 === 0) {
-          const moneyType = Math.random() > 0.6 ? 'coin' : 'bill';
-          fallingMoney.push({
-            x: width * 0.3 + Math.random() * width * 0.4,
-            y: -50,
-            type: moneyType,
-            rotation: Math.random() * 360
-          });
-        }
-        
-        // Update and draw falling money
-        for (let i = fallingMoney.length - 1; i >= 0; i--) {
-          const money = fallingMoney[i];
-          money.y += height * 0.05;
-          money.rotation += 5;
-          
-          if (money.y > height + 50) {
-            fallingMoney.splice(i, 1);
-            continue;
-          }
-          
-          ctx.save();
-          const moneySize = money.type === 'coin' ? 25 : 35;
-          ctx.translate(money.x, money.y);
-          ctx.rotate((money.rotation * Math.PI) / 180);
-          ctx.globalAlpha = 0.9;
-          
-          if (money.type === 'coin') {
-            ctx.drawImage(coinsImg, -moneySize/2, -moneySize/2, moneySize, moneySize);
-          } else {
-            ctx.drawImage(moneyImg, -moneySize/2, -moneySize/2, moneySize, moneySize);
-          }
-          ctx.restore();
-        }
-        
-        gif.addFrame(ctx, { delay: moneyDelay, copy: true });
-        setProgress(78 + frame * 0.5);
-      }
 
       setProgress(95);
 
@@ -242,10 +180,10 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
       <div className="space-y-6">
         <div>
           <h3 className="text-xl font-bold text-foreground mb-2">
-            Ready to Generate Your Elimination GIF?
+            Layoff Games GIF Generator
           </h3>
           <p className="text-muted-foreground">
-            Click below to create your 10-second elimination GIF with money falling
+            Click below to create your layoff game GIF
           </p>
         </div>
 
