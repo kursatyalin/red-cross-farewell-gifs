@@ -2,67 +2,51 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 // @ts-ignore
 import GIF from "gif.js";
-import moneyBillsImg from "@/assets/money-bills.png";
-import goldCoinsImg from "@/assets/gold-coins.png";
 
 interface GifGeneratorProps {
-  photo: File;
+  frames: File[];
   onGifGenerated: (gifBlob: Blob) => void;
 }
 
-export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
+export const GifGenerator = ({ frames, onGifGenerated }: GifGeneratorProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
-
-  const convertToGrayscale = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-    
-    for (let i = 0; i < data.length; i += 4) {
-      const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
-      data[i] = gray;     // red
-      data[i + 1] = gray; // green
-      data[i + 2] = gray; // blue
-      // alpha channel (data[i + 3]) stays the same
-    }
-    
-    ctx.putImageData(imageData, 0, 0);
-  };
 
   const generateGif = async () => {
     setIsGenerating(true);
     setProgress(0);
     
     try {
-      console.log('Starting GIF generation...');
+      console.log('Starting GIF generation from frames...');
       
+      if (frames.length === 0) {
+        throw new Error('No frames provided');
+      }
+
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Could not get canvas context');
 
-      // Load required images
-      const img = new Image();
-      img.src = URL.createObjectURL(photo);
-      
-      const moneyImg = new Image();
-      moneyImg.src = moneyBillsImg;
-      
-      const coinsImg = new Image();
-      coinsImg.src = goldCoinsImg;
-      
-      await Promise.all([
-        new Promise((resolve) => { img.onload = resolve; }),
-        new Promise((resolve) => { moneyImg.onload = resolve; }),
-        new Promise((resolve) => { coinsImg.onload = resolve; })
-      ]);
+      // Load all frame images
+      const frameImages = await Promise.all(
+        frames.map(frame => {
+          return new Promise<HTMLImageElement>((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = URL.createObjectURL(frame);
+          });
+        })
+      );
 
-      // Set canvas size to match image (max 800px)
+      // Set canvas size based on first frame (max 800px)
+      const firstImg = frameImages[0];
       const maxSize = 800;
-      let { width, height } = img;
+      let { width, height } = firstImg;
       
       if (width > maxSize || height > maxSize) {
         if (width > height) {
@@ -88,63 +72,17 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
         transparent: null
       });
 
-      // Frame 1: Original image (3 seconds)
-      ctx.drawImage(img, 0, 0, width, height);
-      gif.addFrame(ctx, { delay: 3000, copy: true });
-      setProgress(10);
-
-      // Frames 2-20: Smooth cross fade-in animation (2 seconds)
-      const fadeFrames = 20;
-      const fadeDelay = Math.round(2000 / fadeFrames);
-      
-      for (let i = 0; i < fadeFrames; i++) {
+      // Add each frame to the GIF
+      frameImages.forEach((img, index) => {
         ctx.clearRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
         
-        const opacity = (i + 1) / fadeFrames;
+        // Default frame delay of 100ms (adjust as needed)
+        gif.addFrame(ctx, { delay: 100, copy: true });
         
-        ctx.save();
-        ctx.strokeStyle = `rgba(255, 0, 0, ${opacity})`;
-        ctx.lineWidth = Math.min(width, height) * 0.02;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(width, height);
-        ctx.moveTo(width, 0);
-        ctx.lineTo(0, height);
-        ctx.stroke();
-        ctx.restore();
-        
-        gif.addFrame(ctx, { delay: fadeDelay, copy: true });
-        setProgress(10 + (i + 1) * 3);
-      }
-
-      // Final frames: Black and white image with red cross (2 seconds)
-      for (let loop = 0; loop < 4; loop++) {
-        ctx.clearRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-        convertToGrayscale(canvas, ctx);
-        
-        ctx.save();
-        ctx.strokeStyle = '#ff0000';
-        ctx.lineWidth = Math.min(width, height) * 0.02;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(width, height);
-        ctx.moveTo(width, 0);
-        ctx.lineTo(0, height);
-        ctx.stroke();
-        ctx.restore();
-        
-        gif.addFrame(ctx, { delay: 500, copy: true });
-        setProgress(70 + loop * 2);
-      }
-
+        const progressPercent = ((index + 1) / frameImages.length) * 90;
+        setProgress(progressPercent);
+      });
 
       setProgress(95);
 
@@ -183,7 +121,7 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
             Layoff Games GIF Generator
           </h3>
           <p className="text-muted-foreground">
-            Click below to create your layoff game GIF
+            Generate GIF from {frames.length} PNG frames
           </p>
         </div>
 
@@ -200,18 +138,18 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
           variant="destructive"
           size="lg"
           onClick={generateGif}
-          disabled={isGenerating}
+          disabled={isGenerating || frames.length === 0}
           className="animate-pulse-red"
         >
           {isGenerating ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              Generating Animation...
+              Generating GIF...
             </>
           ) : (
             <>
               <Download className="w-5 h-5" />
-              Generate Elimination GIF
+              Generate GIF from Frames
             </>
           )}
         </Button>
