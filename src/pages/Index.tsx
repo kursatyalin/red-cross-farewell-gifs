@@ -1,21 +1,21 @@
 import { useState } from "react";
-import { FrameUpload } from "@/components/FrameUpload";
+import { PhotoUpload } from "@/components/PhotoUpload";
 import { GifGenerator } from "@/components/GifGenerator";
 import { GifPreview } from "@/components/GifPreview";
 import { Button } from "@/components/ui/button";
 import { X, Github, Heart } from "lucide-react";
 
 const Index = () => {
-  const [selectedFrames, setSelectedFrames] = useState<File[]>([]);
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [generatedGif, setGeneratedGif] = useState<Blob | null>(null);
 
-  const handleFramesSelect = (files: File[]) => {
-    setSelectedFrames(files);
+  const handlePhotoSelect = (file: File) => {
+    setSelectedPhoto(file);
     setGeneratedGif(null);
   };
 
-  const handleClearFrames = () => {
-    setSelectedFrames([]);
+  const handleClearPhoto = () => {
+    setSelectedPhoto(null);
     setGeneratedGif(null);
   };
 
@@ -24,7 +24,7 @@ const Index = () => {
   };
 
   const handleReset = () => {
-    setSelectedFrames([]);
+    setSelectedPhoto(null);
     setGeneratedGif(null);
   };
 
@@ -39,8 +39,8 @@ const Index = () => {
                 <X className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-foreground">Frame GIF Generator</h1>
-                <p className="text-xs text-muted-foreground">Custom Animations</p>
+                <h1 className="text-lg font-bold text-foreground">Elimination GIF</h1>
+                <p className="text-xs text-muted-foreground">Squid Game Style</p>
               </div>
             </div>
             <Button variant="ghost" size="sm" asChild>
@@ -61,21 +61,21 @@ const Index = () => {
               <X className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Layoff Games GIF Generator
+              Layoff Elimination GIF Generator
             </h1>
             <p className="text-lg text-muted-foreground max-w-md mx-auto">
-              Upload PNG frames to create your custom animated GIF.
-              Perfect for creating unique animations from frame sequences!
+              Turn your workplace frustration into a therapeutic Squid Game-style elimination GIF.
+              Upload your photo and get your dramatic exit scene!
             </p>
           </div>
 
           {/* Step Indicator */}
           <div className="flex items-center justify-center space-x-4 text-sm">
-            <div className={`flex items-center space-x-2 ${selectedFrames.length > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
-              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedFrames.length > 0 ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground'}`}>
+            <div className={`flex items-center space-x-2 ${selectedPhoto ? 'text-primary' : 'text-muted-foreground'}`}>
+              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedPhoto ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground'}`}>
                 1
               </div>
-              <span>Upload Frames</span>
+              <span>Upload Photo</span>
             </div>
             <div className="w-8 h-px bg-border"></div>
             <div className={`flex items-center space-x-2 ${generatedGif ? 'text-primary' : 'text-muted-foreground'}`}>
@@ -90,16 +90,16 @@ const Index = () => {
           <div className="space-y-6">
             {!generatedGif ? (
               <>
-                <FrameUpload
-                  onFramesSelect={handleFramesSelect}
-                  selectedFrames={selectedFrames}
-                  onClear={handleClearFrames}
+                <PhotoUpload
+                  onPhotoSelect={handlePhotoSelect}
+                  selectedPhoto={selectedPhoto}
+                  onClear={handleClearPhoto}
                 />
                 
-                {selectedFrames.length > 0 && (
+                {selectedPhoto && (
                   <div className="animate-fade-in">
                     <GifGenerator
-                      frames={selectedFrames}
+                      photo={selectedPhoto}
                       onGifGenerated={handleGifGenerated}
                     />
                   </div>
@@ -116,21 +116,21 @@ const Index = () => {
           </div>
 
           {/* Info Card */}
-          {selectedFrames.length === 0 && (
+          {!selectedPhoto && (
             <div className="text-center p-6 bg-card/50 rounded-lg border border-border/50 backdrop-blur-sm">
               <h3 className="font-semibold text-foreground mb-2">How it works</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
                 <div>
                   <div className="text-primary font-semibold">1. Upload</div>
-                  <p>Upload multiple PNG frame images</p>
+                  <p>Select a photo you want to eliminate</p>
                 </div>
                 <div>
                   <div className="text-primary font-semibold">2. Generate</div>
-                  <p>We create an animated GIF from your frames</p>
+                  <p>We add the iconic red cross animation</p>
                 </div>
                 <div>
                   <div className="text-primary font-semibold">3. Share</div>
-                  <p>Download and share your custom GIF</p>
+                  <p>Download and share your elimination GIF</p>
                 </div>
               </div>
             </div>
@@ -145,10 +145,10 @@ const Index = () => {
             <p className="flex items-center justify-center space-x-2">
               <span>Made with</span>
               <Heart className="w-4 h-4 text-red-500" />
-              <span>for creating awesome animated GIFs</span>
+              <span>for those who got eliminated at work</span>
             </p>
             <p className="mt-2 text-xs">
-              Turn your frame sequences into amazing animations! 🎬
+              Remember: Every ending is a new beginning! 💪
             </p>
           </div>
         </div>
