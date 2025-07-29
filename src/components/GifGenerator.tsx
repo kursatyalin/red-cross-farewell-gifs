@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import GIF from "gif.js";
 import moneyBillsImg from "@/assets/money-bills.png";
 import goldCoinsImg from "@/assets/gold-coins.png";
-import pigBankImg from "@/assets/pig-bank.png";
 
 interface GifGeneratorProps {
   photo: File;
@@ -55,14 +54,10 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
       const coinsImg = new Image();
       coinsImg.src = goldCoinsImg;
       
-      const pigImg = new Image();
-      pigImg.src = pigBankImg;
-      
       await Promise.all([
         new Promise((resolve) => { img.onload = resolve; }),
         new Promise((resolve) => { moneyImg.onload = resolve; }),
-        new Promise((resolve) => { coinsImg.onload = resolve; }),
-        new Promise((resolve) => { pigImg.onload = resolve; })
+        new Promise((resolve) => { coinsImg.onload = resolve; })
       ]);
 
       // Set canvas size to match image (max 800px)
@@ -150,64 +145,6 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
         setProgress(70 + loop * 2);
       }
 
-      // Pig animation frames (3 seconds)
-      const pigFrames = 30;
-      const pigDelay = 100;
-      
-      for (let i = 0; i < pigFrames; i++) {
-        ctx.clearRect(0, 0, width, height);
-        
-        // Dark background
-        ctx.fillStyle = '#1a1a2e';
-        ctx.fillRect(0, 0, width, height);
-        
-        // Draw pig bank in center (bigger size)
-        const pigSize = Math.min(width, height) * 0.6;
-        const pigX = (width - pigSize) / 2;
-        const pigY = (height - pigSize) / 2;
-        
-        // Add slight bounce animation to pig
-        const bounce = Math.sin(i * 0.2) * 3;
-        ctx.drawImage(pigImg, pigX, pigY + bounce, pigSize, pigSize);
-        
-        // Draw falling money bills with realistic physics
-        const numBills = 12;
-        for (let j = 0; j < numBills; j++) {
-          const fallSpeed = 2 + (j % 3);
-          const sway = Math.sin((i + j * 30) * 0.1) * 20;
-          const billX = (j * width / numBills) + sway + (j * 13) % 50;
-          const billY = ((i * fallSpeed + j * 50) % (height + 150)) - 100;
-          const billSize = 40 + (j % 4) * 15;
-          
-          if (billY > -50 && billY < height + 50) {
-            ctx.save();
-            ctx.translate(billX + billSize/2, billY + billSize/2);
-            ctx.rotate((i * 0.05 + j * 0.3) % (Math.PI * 2));
-            ctx.globalAlpha = 0.9;
-            ctx.drawImage(moneyImg, -billSize/2, -billSize/2, billSize, billSize * 0.6);
-            ctx.restore();
-          }
-        }
-        
-        // Draw falling coins with gravity effect
-        const numCoins = 10;
-        for (let k = 0; k < numCoins; k++) {
-          const gravity = 3 + (k % 2);
-          const coinX = (k * width / numCoins) + Math.sin((i + k * 20) * 0.15) * 15 + (k * 17) % 40;
-          const coinY = ((i * gravity + k * 40) % (height + 120)) - 80;
-          const coinSize = 25 + (k % 3) * 10;
-          
-          if (coinY > -30 && coinY < height + 30) {
-            ctx.save();
-            ctx.globalAlpha = 0.95;
-            ctx.drawImage(coinsImg, coinX, coinY, coinSize, coinSize);
-            ctx.restore();
-          }
-        }
-        
-        gif.addFrame(ctx, { delay: pigDelay, copy: true });
-        setProgress(78 + (i + 1) * 0.5);
-      }
 
       setProgress(95);
 
