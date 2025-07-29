@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import GIF from "gif.js";
 import moneyBillsImg from "@/assets/money-bills.png";
 import goldCoinsImg from "@/assets/gold-coins.png";
+import pigBankImg from "@/assets/pig-bank.png";
 
 interface GifGeneratorProps {
   photo: File;
@@ -54,10 +55,14 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
       const coinsImg = new Image();
       coinsImg.src = goldCoinsImg;
       
+      const pigImg = new Image();
+      pigImg.src = pigBankImg;
+      
       await Promise.all([
         new Promise((resolve) => { img.onload = resolve; }),
         new Promise((resolve) => { moneyImg.onload = resolve; }),
-        new Promise((resolve) => { coinsImg.onload = resolve; })
+        new Promise((resolve) => { coinsImg.onload = resolve; }),
+        new Promise((resolve) => { pigImg.onload = resolve; })
       ]);
 
       // Set canvas size to match image (max 800px)
@@ -145,6 +150,53 @@ export const GifGenerator = ({ photo, onGifGenerated }: GifGeneratorProps) => {
         setProgress(70 + loop * 2);
       }
 
+      // Pig animation frames (3 seconds)
+      const pigFrames = 30;
+      const pigDelay = 100;
+      
+      for (let i = 0; i < pigFrames; i++) {
+        ctx.clearRect(0, 0, width, height);
+        
+        // Dark background
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, width, height);
+        
+        // Draw pig bank in center
+        const pigSize = Math.min(width, height) * 0.4;
+        const pigX = (width - pigSize) / 2;
+        const pigY = (height - pigSize) / 2;
+        
+        // Add slight bounce animation to pig
+        const bounce = Math.sin(i * 0.3) * 5;
+        ctx.drawImage(pigImg, pigX, pigY + bounce, pigSize, pigSize);
+        
+        // Draw falling money bills
+        const numBills = 8;
+        for (let j = 0; j < numBills; j++) {
+          const billX = (j * width / numBills) + ((i * 3 + j * 17) % (width / numBills));
+          const billY = ((i * 5 + j * 23) % (height + 100)) - 50;
+          const billSize = 30 + (j % 3) * 10;
+          
+          ctx.save();
+          ctx.translate(billX + billSize/2, billY + billSize/2);
+          ctx.rotate((i + j) * 0.1);
+          ctx.drawImage(moneyImg, -billSize/2, -billSize/2, billSize, billSize * 0.6);
+          ctx.restore();
+        }
+        
+        // Draw falling coins
+        const numCoins = 6;
+        for (let k = 0; k < numCoins; k++) {
+          const coinX = (k * width / numCoins) + ((i * 4 + k * 19) % (width / numCoins));
+          const coinY = ((i * 6 + k * 29) % (height + 80)) - 40;
+          const coinSize = 20 + (k % 2) * 8;
+          
+          ctx.drawImage(coinsImg, coinX, coinY, coinSize, coinSize);
+        }
+        
+        gif.addFrame(ctx, { delay: pigDelay, copy: true });
+        setProgress(78 + (i + 1) * 0.5);
+      }
 
       setProgress(95);
 
