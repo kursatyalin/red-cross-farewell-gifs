@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { PhotoUpload } from "@/components/PhotoUpload";
 import { GifGenerator } from "@/components/GifGenerator";
-import { PigGifGenerator } from "@/components/PigGifGenerator";
 import { GifPreview } from "@/components/GifPreview";
 import { Button } from "@/components/ui/button";
 import { X, Github, Heart } from "lucide-react";
@@ -105,10 +104,6 @@ const Index = () => {
                     />
                   </div>
                 )}
-                
-                <div className="animate-fade-in">
-                  <PigGifGenerator onGifGenerated={handleGifGenerated} />
-                </div>
               </>
             ) : (
               <div className="animate-fade-in">
